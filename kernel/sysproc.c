@@ -91,3 +91,20 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_trace(void)
+{
+  int arg;
+  //if(argint(0, &arg)<0){
+  //  return -1;}
+  argint(0, &arg);
+
+  struct proc *p=myproc();
+  p->traceval=arg;
+  //int toggled[22];
+  //int *p=toggled;
+  //toggled[arg]=1;
+  //return trace();
+  return 0;
+}
