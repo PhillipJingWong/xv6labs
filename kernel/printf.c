@@ -163,6 +163,7 @@ void
 panic(char *s)
 {
   pr.locking = 0;
+  backtrace();
   printf("panic: ");
   printf("%s\n", s);
   panicked = 1; // freeze uart output from other CPUs
@@ -175,4 +176,31 @@ printfinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;
+}
+
+void
+backtrace(void) {
+  //print all the return addresses stored in the stackframe
+  //get the size of the stackframe, divide by 2 then print the bottom value +16 for each stack?
+  printf("backtrace:\n");
+  //proc * current_process=myproc();
+
+  uint64 temp = (r_fp());
+  uint64* x =(uint64 *)temp;
+
+  while((uint64)x>PGROUNDDOWN((uint64)x)){
+    printf("%p\n", (void *)(*(x-1)));
+    x= (uint64 *)(*(x-2));
+  }
+
+  /*
+
+  uint64 x =r_fp();
+
+  while(PGROUNDDOWN(x)<x){
+    printf("%p\n", (void *)(*(uint64*)(x-8)));
+    x= *(uint64 *)(x-16);
+  }*/
+
+
 }

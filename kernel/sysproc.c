@@ -67,6 +67,10 @@ sys_sleep(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+
+  //add
+  backtrace();
+
   return 0;
 }
 
@@ -90,4 +94,38 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+
+//sys_sigalarm(int ticks, void (*handler)()){
+uint64
+sys_sigalarm(void){
+
+  struct proc * p=myproc();
+
+  int n;
+  uint64 handler;
+  argint(0, &n);
+  argaddr(1, &handler);
+
+  p->ticks = n;
+  p->ticks_passed = 0;
+  p->handler = handler;
+
+  //as long as argint 0/1 are not both 0 then keep executing
+  //whenever ticks_passed=ticks then execute the handler and reset ticks_passed to 0
+
+  return 0;
+}
+
+uint64
+sys_sigreturn(void){
+  //after handling the alarm restore relevant registers etc?
+  struct proc * p = myproc();
+  memmove(p->trapframe, &(p->rtntp), sizeof(struct trapframe));
+  //maybe use r_fp() to restore a0?
+  p->ticks_passed=0;
+
+  //return 0;
+  return p->trapframe->a0;
 }
