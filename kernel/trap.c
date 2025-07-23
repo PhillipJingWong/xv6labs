@@ -29,41 +29,6 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
-int
-cowfault(pagetable_t pagetable, uint64 va){
-  if(va>=MAXVA)
-  return -1;
-
-  pte_t* pte = walk(pagetable, va, 0);
-
-  if(pte==0 || (*pte &PTE_U)==0 || (*pte * PTE_V)==0){
-    return -1;
-  }
-
-  uint64 pa1 = PTE2PA(*pte);
-  int refcnt=getref(pa1);
-
-  if(refcnt==1){
-    *pte=(*pte&(~PTE_COW))|PTE_W;
-    return 0;
-  }else if(refcnt>1){
-    uint64 pa2=(uint64) kalloc();
-    if(pa2==0){
-      printf("cow kalloc failed\n");
-      return -1;
-    }
-
-    memmove((void*)pa2, (void*)pa1, PGSIZE);
-    kfree((void*)pa1);
-
-  uint flags=PTE_FLAGS(*pte);
-  *pte=(PA2PTE(pa2)| flags | PTE_W) & (~PTE_COW);
-
-  return 0;
-
-}
-  return -1;
-}
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -81,10 +46,10 @@ usertrap(void)
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
-
+  
   // save user program counter.
   p->trapframe->epc = r_sepc();
-
+  
   if(r_scause() == 8){
     // system call
 
@@ -100,22 +65,11 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if(r_scause()==0xf){
-    uint64 va0=r_stval();
-    if(va0>p->sz){
-      setkilled(p);
-    }else if(cowfault(p->pagetable, va0)!=0){
-      setkilled(p);
-    }else if(cowfault(p->pagetable, va0)!=0){
-      setkilled(p);
-    }else if(va0<PGSIZE){
-      setkilled(p);
-    }
-
-
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
+
+
     printf("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
     printf("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
     setkilled(p);
@@ -123,16 +77,11 @@ usertrap(void)
 
   if(killed(p))
     exit(-1);
+  
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
     yield();
-
-  //respond to page faults - maybe mark one of the supervisor flag bits for cow fork?
-  //but kill the process if theres no free memory
-  if(which_dev==3){
-    printf("test");
-  }
 
   usertrapret();
 }
@@ -163,7 +112,7 @@ usertrapret(void)
 
   // set up the registers that trampoline.S's sret will use
   // to get to user space.
-
+  
   // set S Previous Privilege mode to User.
   unsigned long x = r_sstatus();
   x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode
@@ -176,7 +125,7 @@ usertrapret(void)
   // tell trampoline.S the user page table to switch to.
   uint64 satp = MAKE_SATP(p->pagetable);
 
-  // jump to userret in trampoline.S at the top of memory, which
+  // jump to userret in trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.
   uint64 trampoline_userret = TRAMPOLINE + (userret - trampoline);
@@ -185,14 +134,14 @@ usertrapret(void)
 
 // interrupts and exceptions from kernel code go here via kernelvec,
 // on whatever the current kernel stack is.
-void
+void 
 kerneltrap()
 {
   int which_dev = 0;
   uint64 sepc = r_sepc();
   uint64 sstatus = r_sstatus();
   uint64 scause = r_scause();
-
+  
   if((sstatus & SSTATUS_SPP) == 0)
     panic("kerneltrap: not from supervisor mode");
   if(intr_get() != 0)
@@ -250,7 +199,13 @@ devintr()
       uartintr();
     } else if(irq == VIRTIO0_IRQ){
       virtio_disk_intr();
-    } else if(irq){
+    }
+#ifdef LAB_NET
+    else if(irq == E1000_IRQ){
+      e1000_intr();
+    }
+#endif
+    else if(irq){
       printf("unexpected interrupt irq=%d\n", irq);
     }
 
@@ -269,3 +224,4 @@ devintr()
     return 0;
   }
 }
+
