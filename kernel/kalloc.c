@@ -23,11 +23,18 @@ struct {
   struct run *freelist;
 } kmem;
 
+struct{
+  struct spinlock reflock;
+  char refcount[PHYSTOP/PGSIZE];
+} ref;
+
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  initlock(&ref.reflock, "kmemref");
   freerange(end, (void*)PHYSTOP);
+  memset(&ref.refcount, 0, PHYSTOP/PGSIZE);
 }
 
 void
@@ -35,8 +42,12 @@ freerange(void *pa_start, void *pa_end)
 {
   char *p;
   p = (char*)PGROUNDUP((uint64)pa_start);
-  for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
+//  for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
+  for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE){
+    ref.refcount[(uint64)p/PGSIZE]=1;
     kfree(p);
+  }
+
 }
 
 // Free the page of physical memory pointed at by pa,
@@ -50,6 +61,11 @@ kfree(void *pa)
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
+
+
+  int refcnt=decref((uint64)pa);
+  if(refcnt>0)
+    return;
 
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
@@ -72,11 +88,44 @@ kalloc(void)
 
   acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  //if(r)
+  if(r){
     kmem.freelist = r->next;
+
+    int pn=(uint64)r/PGSIZE;
+
+    if(ref.refcount[pn]!=0)
+      panic("kalloc ref non zero!");
+
+    ref.refcount[pn]=1;
+  }
   release(&kmem.lock);
 
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
+}
+
+
+void
+incref(uint64 pa){
+  acquire(&ref.reflock);
+  ref.refcount[pa/PGSIZE]++;
+  release(&ref.reflock);
+}
+
+int
+getref(uint64 pa){
+  acquire(&ref.reflock);
+  int refcnt = ref.refcount[pa/PGSIZE];
+  release(&ref.reflock);
+  return refcnt;
+}
+
+int
+decref(uint64 pa){
+  acquire(&ref.reflock);
+  int refcnt=--ref.refcount[pa/PGSIZE];
+  release(&ref.reflock);
+  return refcnt;
 }
