@@ -33,7 +33,7 @@ void
 proc_mapstacks(pagetable_t kpgtbl)
 {
   struct proc *p;
-
+  
   for(p = proc; p < &proc[NPROC]; p++) {
     char *pa = kalloc();
     if(pa == 0)
@@ -48,7 +48,7 @@ void
 procinit(void)
 {
   struct proc *p;
-
+  
   initlock(&pid_lock, "nextpid");
   initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
@@ -93,7 +93,7 @@ int
 allocpid()
 {
   int pid;
-
+  
   acquire(&pid_lock);
   pid = nextpid;
   nextpid = nextpid + 1;
@@ -146,10 +146,6 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
-  p->ticks =0;
-  p->ticks_passed=0;
-  p->handler=0;
-
   return p;
 }
 
@@ -164,11 +160,6 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
-
-  p->ticks =0;
-  p->ticks_passed=0;
-  p->handler=0;
-
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -245,7 +236,7 @@ userinit(void)
 
   p = allocproc();
   initproc = p;
-
+  
   // allocate one user page and copy initcode's instructions
   // and data into it.
   uvmfirst(p->pagetable, initcode, sizeof(initcode));
@@ -381,7 +372,7 @@ exit(int status)
 
   // Parent might be sleeping in wait().
   wakeup(p->parent);
-
+  
   acquire(&p->lock);
 
   p->xstate = status;
@@ -437,7 +428,7 @@ wait(uint64 addr)
       release(&wait_lock);
       return -1;
     }
-
+    
     // Wait for a child to exit.
     sleep(p, &wait_lock);  //DOC: wait-sleep
   }
@@ -557,7 +548,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-
+  
   // Must acquire p->lock in order to
   // change p->state and then call sched.
   // Once we hold p->lock, we can be
@@ -636,7 +627,7 @@ int
 killed(struct proc *p)
 {
   int k;
-
+  
   acquire(&p->lock);
   k = p->killed;
   release(&p->lock);
