@@ -1,3 +1,14 @@
+Labs uploaded as different branches:
+Lab 1: Utilities
+Lab 2: System Calls
+Lab 3: Page tables
+Lab 4: Traps
+Lab 5: Copy-on-write
+Lab 6: Network Driver
+
+
+
+
 xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
 Version 6 (v6).  xv6 loosely follows the structure and style of v6,
 but is implemented for a modern RISC-V multiprocessor using ANSI C.
