@@ -1,3 +1,27 @@
+In this lab, I extended the xv6 operating system to support basic network communication over a virtual Ethernet interface. This involved both device driver and network stack implementation.
+
+Part 1: E1000 NIC Driver
+	•	Developed a device driver for the Intel E1000 network interface card (NIC), emulated in QEMU.
+	•	Implemented e1000_transmit() and e1000_recv() to send and receive Ethernet frames using DMA and ring buffers.
+	•	Interfaced with memory mapped control registers to manage transmission and interrupt-driven reception.
+	•	Verified packet transmission and reception using tcpdump and xv6 test programs.
+
+Part 2: UDP Stack (Receive Side)
+	•	Completed the receive path of a simplified Ethernet/IP/UDP network stack.
+	•	Implemented:
+	•	ip_rx() to handle incoming IP packets,
+	•	sys_bind() to register UDP ports,
+	•	sys_recv() to receive UDP datagrams in user space.
+	•	Added support for packet queuing per port (with a 16-packet limit) and blocking behavior for recv().
+	•	Enabled user-space applications to receive packets from the host, including successful replies to ping-style UDP tests.
+
+Tools & Testing
+	•	Used QEMU’s user-mode networking to simulate a LAN.
+	•	Verified functionality with packet captures (packets.pcap) using tcpdump.
+	•	Passed all test cases, including ARP, UDP echo, and DNS like name resolution using a custom ping and nettest suite.
+
+
+
 xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
 Version 6 (v6).  xv6 loosely follows the structure and style of v6,
 but is implemented for a modern RISC-V multiprocessor using ANSI C.
